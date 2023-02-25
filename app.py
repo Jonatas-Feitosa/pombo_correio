@@ -7,6 +7,7 @@ import time
 import os
 
 #Abrir o Chrome
+#testeaqui
 
 dir_path = os.getcwd()
 profile = os.path.join(dir_path, "profile", "wpp")
