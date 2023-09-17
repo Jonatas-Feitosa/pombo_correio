@@ -1,21 +1,33 @@
-#bibliotecas necessarias, caso nao tenha instalada em sua maquina basta executar os comandos (pip instal....)
+# =========================================================================
+# Projeto: Pombo correio - Automatização de mensagens
+# Autor: jonatasitalofeitosa@gmail.com
+#
+# ⚠ Este app é gratuito para uso, mas você pode contribuir com uma doação
+# Chavi pix (e-mail): jonatasitalofeitosa@gmail.com
+# =========================================================================
+
+# Importações de bibliotecas:
+# - Bibliotecas integradas (não são necessárias instalação)
+import time
+import os
+import re
+
+# - Bibliotecas de terceiros necessarias, caso não tenha instalada em sua maquina basta executar os comandos (pip instal...)
 from selenium import webdriver  #pip install selenium
+from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager #pip install webdriver_manager
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.action_chains import ActionChains
-import time
-import os
-import re
-import pyperclip #pip install pyperclip
-#importar função de converter fotos do arquivo local
+import pyperclip #pip install 
+
+# - Biblioteca de autoria própria
 from converter_fotos import converter_imagens
 
 
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
-
 
 #Indica o local das fotos para as publicações
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
@@ -116,7 +128,8 @@ opcoes = webdriver.ChromeOptions()
 opcoes.add_argument(r"user-data-dir={}".format(profile))
 
 #Abrir o site do WhatsApp
-driver = webdriver.Chrome(ChromeDriverManager().install(), options=opcoes)
+driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=opcoes)
+#driver = webdriver.Chrome(ChromeDriverManager().install(), options=opcoes)
 driver.get("https://web.whatsapp.com")
 
 #Verifica se o WhatsApp está logado
@@ -124,8 +137,7 @@ print("Escaneie o QR code para continuar!")
 while True:
     try:
         pesquisa = driver.find_element("xpath",'//*[@id="side"]/div[1]/div/div/div[2]/div/div[2]')
-        print("Conectado              ")
-        print('====================')
+        os.system("cls") or None #Limpa o terminal
         break
     except NoSuchElementException:
         print("Aguardando conexão.  ",end='\r')
