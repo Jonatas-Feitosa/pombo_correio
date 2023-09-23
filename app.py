@@ -1,12 +1,8 @@
 # =========================================================================
 # Projeto: Pombo correio - Automatização de mensagens
 # Autor: jonatasitalofeitosa@gmail.com
-#
-# ⚠ Este app é gratuito para uso, mas você pode contribuir com uma doação
-# Chavi pix (e-mail): jonatasitalofeitosa@gmail.com
 # =========================================================================
 
-# Importações de bibliotecas:
 # - Bibliotecas integradas (não são necessárias instalação)
 import time
 import os
@@ -14,20 +10,14 @@ import re
 
 # - Bibliotecas de terceiros necessarias, caso não tenha instalada em sua maquina basta executar os comandos (pip instal...)
 from selenium import webdriver  #pip install selenium
-from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager #pip install webdriver_manager
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.action_chains import ActionChains
-import pyperclip #pip install 
-
-# - Biblioteca de autoria própria
-from converter_fotos import converter_imagens
-
-
 from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
+
+# - Bibliotecas importadas de arquivos
+from converter_fotos import to_jpg as converter_fotos
 
 #Indica o local das fotos para as publicações
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
@@ -36,20 +26,17 @@ caminho_fotos = os.path.join(diretorio_atual, 'Fotos/')
 #Funcao que importa os contatos do documento
 contatos = []
 def importar_contatos():
-    print("Importando contatos...")
-
+    contatos.clear()
     with open("contatos.txt","r", encoding="utf-8") as arquivo:
         empresas = arquivo.readlines()
         for linha in empresas:
             contatos.append(linha)
-
     print(len(contatos),"contatos foram importados!")
 
 #Funcao que importa as mensagems do documetno
 mensagens = {}
 def importar_mensagens():
-    print("Importando mensagens...")
-
+    mensagens.clear
     with open("mensagens.txt","r", encoding="utf-8") as arquivo:
         marcas = arquivo.readlines()
         for linha in marcas:
@@ -65,13 +52,24 @@ def importar_mensagens():
 #Funcao que pesquisa o contato/grupo
 def buscar_contato(contato):
 
-    #Procura o campo de pesquisa
-    campo_pesquisa = driver.find_element("xpath",'/html/body/div[1]/div/div/div[4]/div/div[1]/div/div/div[2]/div/div[1]/p')
-    
-    pyperclip.copy(contato)
-
-    campo_pesquisa.send_keys(Keys.SHIFT, Keys.INSERT)
-    campo_pesquisa.send_keys(Keys.ENTER)
+    campo_pesquisa = driver.find_element("xpath",'/html/body/div[1]/div/div/div[4]/div/div[1]/div/div/div[2]/div/div')
+    campo_pesquisa.send_keys('selecionando contato')
+    campo_pesquisa.send_keys(Keys.CONTROL + 'A')
+    texto_pesquisa = driver.find_element("xpath",'/html/body/div[1]/div/div/div[4]/div/div[1]/div/div/div[2]/div/div/p/span')
+    #script para colar texto com emojis
+    driver.execute_script(
+      f'''
+const text = `{contato}`;
+const dataTransfer = new DataTransfer();
+dataTransfer.setData('text', text);
+const event = new ClipboardEvent('paste', {{
+  clipboardData: dataTransfer,
+  bubbles: true
+}});
+arguments[0].dispatchEvent(event)
+''',
+      texto_pesquisa)
+    campo_pesquisa .send_keys(Keys.ENTER)
     time.sleep(1)
 
 #Envia a mensagem
@@ -84,41 +82,34 @@ def enviar_mensagem(contato,mensagem,imagem=None):
     importar_midia = driver.find_elements("xpath", "//input[@type='file']")[1]
 
     importar_midia.send_keys(str(imagem))
-    time.sleep(2)
-
-    # Copia a mensagem para a área de transferência
-    driver.execute_script('navigator.clipboard.writeText(arguments[0]);', mensagem)
-    actions = ActionChains(driver)
-
-    # Adiciona a ação de pressionar Ctrl + V
-    actions.key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL)
-
-    # Executa as ações
-    actions.perform()
     time.sleep(1)
-    actions.send_keys(Keys.ENTER)
-    actions.perform()
 
-    time.sleep(5)
-
-#Funcao que abre as conversas arquivadas (atualmente não usado)
-def abrir_conversas_arquivadas():
-    gaveta_arquivadas = driver.find_element("xpath",'//*[@id="pane-side"]/button/div/div[2]/div')
-    gaveta_arquivadas.click()
+    caixa_de_mensagem = driver.find_element("xpath","//div[@title='Digite uma mensagem']")
+    caixa_de_mensagem.send_keys(mensagem)
+    caixa_de_mensagem.send_keys(Keys.ENTER)
+    time.sleep(1)
 
 #Funcao que inicia a opcao 2
 def opcao2():
-    print("\n")
-    converter_imagens()
+    converter_fotos()
     importar_contatos()
     importar_mensagens()
-    print("\n")
-    for marca, link in mensagens.items():
-        print("Postando " + marca)
 
-        for contato in contatos:
+    time.sleep(3)
+    os.system("cls") or None
+
+    contador = 0
+    for marca, link in mensagens.items():
+        contador += 1
+        contador_msg = '[' + str(contador) + '/' + str(len(mensagens)) + ']'
+        for j, contato in enumerate(contatos):
+            progresso = round((j / len(contatos)) * 100)
+            print(f"{contador_msg} Postando {marca} ({progresso}%)", end="\r")
             caminho_da_foto = os.path.join(caminho_fotos, marca + ".jpg")
             enviar_mensagem(contato,(marca + ' ' + link),(caminho_da_foto))
+        print(f"{contador_msg} Postando {marca} (100%)")
+
+    os.system("cls") or None
     print("Publicações finalizadas\n")
 
 #Procura as configurações locais do whatsapp para salvar a sessão
@@ -129,7 +120,6 @@ opcoes.add_argument(r"user-data-dir={}".format(profile))
 
 #Abrir o site do WhatsApp
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=opcoes)
-#driver = webdriver.Chrome(ChromeDriverManager().install(), options=opcoes)
 driver.get("https://web.whatsapp.com")
 
 #Verifica se o WhatsApp está logado
@@ -137,7 +127,7 @@ print("Escaneie o QR code para continuar!")
 while True:
     try:
         pesquisa = driver.find_element("xpath",'//*[@id="side"]/div[1]/div/div/div[2]/div/div[2]')
-        os.system("cls") or None #Limpa o terminal
+        os.system("cls") or None
         break
     except NoSuchElementException:
         print("Aguardando conexão.  ",end='\r')
@@ -145,28 +135,31 @@ while True:
         print("Aguardando conexão.. ",end='\r')
         time.sleep(0.3)
         print("Aguardando conexão...",end='\r')
-        time.sleep(0.3) 
+        time.sleep(0.3)
+
+os.system("cls") or None
 
 # ========== Menu principal ========== #
 while True:
-    print('Selecione uma opção: \n0.Fechar app \n1.Texto simples \n2.Imagem com Texto e link')
+    
+    print('Selecione uma opção: \n0.Fechar app \n1.Texto simples (Inativa) \n2.Imagem com Texto e link')
     opcao = str(input('Opção: '))
-    print('====================')
  
     if opcao == "0":
-        # código para a opção 1
+        os.system("cls") or None
         print("Finalizando...")
         break
     elif opcao == "1":
-        # código para a opção 2
+        os.system("cls") or None
         print("Você escolheu a opção 1")
 
     elif opcao == "2":
+        os.system("cls") or None
         print("Você escolheu a opção 2")
         opcao2()
 
     else:
-        # opção inválida
+        os.system("cls") or None
         print("Opção inválida. Tente novamente.")
 
     time.sleep(1)
