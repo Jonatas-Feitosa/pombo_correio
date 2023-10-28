@@ -1,3 +1,5 @@
 profile/
 __pycache__/
 teste.py
+chromedriver.exe
+exportar.json
