@@ -8,7 +8,6 @@ Este projeto automatiza o envio de mensagens no WhatsApp. Ele pode ser usado par
 
 * Python 3
 * Bibliotecas Selenium e webdriver_manager
-* Conta do WhatsApp Web ativa
 
 **Instalação:**
 

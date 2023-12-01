@@ -3,3 +3,6 @@ __pycache__/
 teste.py
 chromedriver.exe
 exportar.json
+cred.json
+auth.py
+output

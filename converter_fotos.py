@@ -1,7 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import filedialog
-from PIL import Image #pip install Pillow
+from PIL import Image
 
 # Função para converter fotos para o formato jpg
 def to_jpg(local='./Fotos'):

@@ -1,22 +1,26 @@
 import time
 import os
 import re
+import sys
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service as ChromeService
 from converter_fotos import to_jpg as converter_fotos
+from auth import autenticar
 
-print(f'''
-======================================================
-Projeto: Pombo correio - Automatização de mensagens
-Autor: jonatasitalofeitosa@gmail.com
-Ajude no desenvolvimento, faça um pix para o email
-======================================================
-''')
-time.sleep(5)
-os.system("cls") or None
+if getattr(sys, 'frozen', False):
+    # Executando em um executável (PyInstaller)
+    diretorio_atual = sys._MEIPASS
+else:
+    # Executando o script diretamente
+    diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+
+
+doc_contatos = os.path.join(diretorio_atual, 'contatos.txt')
+doc_mensagens = os.path.join(diretorio_atual, 'mensagens.txt')
+caminho_fotos = os.path.join(diretorio_atual, 'Fotos/')
 
 def iniciar_driver(headless=False):
     dir_path = os.getcwd()
@@ -47,7 +51,7 @@ def verificar_sessao(driver):
 
 def importar_contatos():
     contatos = []
-    with open("contatos.txt","r", encoding="utf-8") as arquivo:
+    with open(doc_contatos,"r", encoding="utf-8") as arquivo:
         empresas = arquivo.readlines()
         for linha in empresas:
             contatos.append(linha)
@@ -56,7 +60,7 @@ def importar_contatos():
 
 def importar_mensagens():
     mensagens = {}
-    with open("mensagens.txt","r", encoding="utf-8") as arquivo:
+    with open(doc_mensagens,"r", encoding="utf-8") as arquivo:
         marcas = arquivo.readlines()
         for linha in marcas:
             padrao = re.compile(r'(.*)(https?://\S+)')
@@ -83,14 +87,14 @@ def colar_emoji(driver,texto,elemento):
       elemento)
 
 def buscar_contato(driver,contato):
-    campo_pesquisa = driver.find_element("xpath",'/html/body/div[1]/div/div/div[4]/div/div[1]/div/div/div[2]/div/div')
+    campo_pesquisa = driver.find_element("xpath","//div[@title='Caixa de texto de pesquisa']")
     
     while True:
         try:
             campo_pesquisa.send_keys('selecionando contato')
             campo_pesquisa.send_keys(Keys.CONTROL + 'A')
             time.sleep(0.5)
-            texto_pesquisa = driver.find_element("xpath",'/html/body/div[1]/div/div/div[4]/div/div[1]/div/div/div[2]/div/div/p/span')
+            texto_pesquisa = campo_pesquisa.find_element("xpath",'./p/span')
             colar_emoji(driver,contato,texto_pesquisa)
             campo_pesquisa .send_keys(Keys.ENTER)
             time.sleep(1)
@@ -114,14 +118,12 @@ def enviar_mensagem(driver,mensagem,imagem=None):
     time.sleep(1)
 
 def opcao2(driver):
-    converter_fotos()
+    converter_fotos(caminho_fotos)
     contatos = importar_contatos()
     mensagens = importar_mensagens()
     time.sleep(1)
     os.system("cls") or None
-    #Indica o local das fotos para as publicações
-    diretorio_atual = os.path.dirname(os.path.abspath(__file__))
-    caminho_fotos = os.path.join(diretorio_atual, 'Fotos/')
+
     contador = 0
     for marca, link in mensagens.items():
         contador += 1
@@ -132,16 +134,16 @@ def opcao2(driver):
             print(f"{contador_msg} Postando {marca} ({progresso}%)                                    ", end="\r")
             caminho_da_foto = os.path.join(caminho_fotos, marca + ".jpg")
             enviar_mensagem(driver,(marca + ' ' + link),(caminho_da_foto))
-        #print(f"{contador_msg} Postando {marca} (100%)")
+        print(f"{contador_msg} Postando {marca} (100%)")
     os.system("cls") or None
     print("Publicações finalizadas")
 
-def opcao3():
+def opcao3(driver):
     conversas_arquivas = driver.find_element("xpath","//*[@id='pane-side']/button/div/div[2]/div/div")
     conversas_arquivas.click()
     converter_fotos()
-    importar_contatos()
-    importar_mensagens()
+    contatos = importar_contatos()
+    mensagens = importar_mensagens()
     
     time.sleep(3)
 
@@ -155,56 +157,44 @@ def opcao3():
                 print(f'achado o nome {grupos[j].get_attribute("textContent")} em: {contatos[i]}')
     time.sleep(10)
 
-    contador = 0
-    for marca, link in mensagens.items():
-        contador_msg = '[' + str(contador) + '/' + str(len(mensagens)) + ']'
-        for j, grupo in enumerate(grupos):
-            #grupo = driver.find_elements("xpath",f"//span[contains(@title,'{contato}')]")
-            grupo.click()
-            progresso = round((j / len(grupos)) * 100)
-            print(f"{contador_msg} Postando {marca} ({progresso}%)", end="\r")
-            caminho_da_foto = os.path.join(caminho_fotos, marca + ".jpg")
-            enviar_mensagem((marca + ' ' + link),(caminho_da_foto))
-        print(f"{contador_msg} Postando {marca} (100%)")
-
 def menu():
-    driver = iniciar_driver()
-    verificar_sessao(driver)
-    
-    while True:
-        print('''
+    if autenticar():
+        driver = iniciar_driver()
+        verificar_sessao(driver)
+        while True:
+            print('''
 Selecione uma opção:
 0. Fechar app
 1. Texto simples (Inativa)
 2. Imagem com Texto e link
 3. Imagem com Texto e link (Modo headless *experimental)
-        ''')
-        opcao = input('Opção: ')
-        
-        if opcao == "0":
-            os.system("cls") or None
-            print("Finalizando...")
-            driver.close()
-            break
-        elif opcao == "1":
-            os.system("cls") or None
-            print("Você escolheu a opção 1")
-        elif opcao == "2":
-            os.system("cls") or None
-            time.sleep(10)
-            print("Você escolheu a opção 2")
-            opcao2(driver)
-        elif opcao == "3":
-            os.system("cls") or None
-            print("Você escolheu a opção 3")
-            driver.close()
-            driver = iniciar_driver(True)
-            verificar_sessao(driver)
-            opcao2(driver)
-        else:
-            os.system("cls") or None
-            print("Opção inválida. Tente novamente.")
-        time.sleep(1)
+            ''')
+            opcao = input('Opção: ')
+            
+            if opcao == "0":
+                os.system("cls") or None
+                print("Finalizando...")
+                driver.close()
+                break
+            elif opcao == "1":
+                os.system("cls") or None
+                print("Você escolheu a opção 1")
+            elif opcao == "2":
+                os.system("cls") or None
+                time.sleep(10)
+                print("Você escolheu a opção 2")
+                opcao2(driver)
+            elif opcao == "3":
+                os.system("cls") or None
+                print("Você escolheu a opção 3")
+                driver.close()
+                driver = iniciar_driver(True)
+                verificar_sessao(driver)
+                opcao2(driver)
+            else:
+                os.system("cls") or None
+                print("Opção inválida. Tente novamente.")
+            time.sleep(1)
 
 if __name__ == "__main__":
     menu()
